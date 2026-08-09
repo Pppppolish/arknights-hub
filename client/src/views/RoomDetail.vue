@@ -82,7 +82,7 @@ const presets = [
 ];
 
 // 连接 Socket
-const socket = io('http://localhost:3000');
+const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000');
 
 onMounted(async () => {
   try {
