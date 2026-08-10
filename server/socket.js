@@ -9,12 +9,13 @@ module.exports = (io) => {
     console.log(`⚡ 新连接: ${socket.id}`);
 
     // 加入房间
-        // 检查是否被该房间禁止加入
-    if (bannedUsers.has(userId) && bannedUsers.get(userId) === roomId) {
-      socket.emit('error', { msg: '你已被该房间禁止加入' });
-      return;
-    }
     socket.on('joinRoom', async ({ roomId, userId, username }) => {
+      // 检查是否被该房间禁止加入
+      if (bannedUsers.has(userId) && bannedUsers.get(userId) === roomId) {
+        socket.emit('error', { msg: '你已被该房间禁止加入' });
+        return;
+      }
+
       try {
         socket.join(roomId);
         onlineUsers.set(socket.id, { userId, username, roomId });
@@ -27,9 +28,9 @@ module.exports = (io) => {
           { new: true }
         ).populate('creator', 'username');
 
-        // 广播给房间内其他人的消息：新用户加入
+        // 广播给房间内其他人：新用户加入
         socket.to(roomId).emit('userJoined', { userId, username });
-        
+
         // 发送当前房间所有用户列表（包含房主信息）给新加入者
         const usersInRoom = [];
         for (const [sid, info] of onlineUsers.entries()) {
@@ -49,7 +50,7 @@ module.exports = (io) => {
       }
     });
 
-    // 聊天消息（只发预制消息，但保留兼容）
+    // 聊天消息
     socket.on('chatMessage', async ({ roomId, content, senderName }) => {
       const safeContent = content.trim().slice(0, 200);
       if (!safeContent) return;
@@ -63,17 +64,14 @@ module.exports = (io) => {
 
     // 踢人事件（需要房主权限）
     socket.on('kickUser', async ({ userIdToKick, roomId }) => {
-      // 获取当前操作者信息
       const currentUserInfo = onlineUsers.get(socket.id);
       if (!currentUserInfo) return;
-      
-      // 检查当前操作者是否为房主
+
       const room = await Room.findById(roomId);
       if (!room || room.creator.toString() !== currentUserInfo.userId) {
         return socket.emit('error', { msg: '只有房主才能踢人' });
       }
 
-      // 遍历在线用户，找到目标用户的 socket 并将其踢出
       let kickedSid = null;
       for (const [sid, info] of onlineUsers.entries()) {
         if (info.roomId === roomId && info.userId === userIdToKick) {
@@ -89,29 +87,30 @@ module.exports = (io) => {
       if (kickedSocket) {
         kickedSocket.leave(roomId);
         kickedSocket.emit('kicked', { msg: '你被房主移出了房间' });
-        // 将用户加入黑名单
-        bannedUsers.set(userIdToKick, roomId);
         kickedSocket.disconnect(true);
       }
+
+      // 将用户加入黑名单
+      bannedUsers.set(userIdToKick, roomId);
+
       // 从映射中移除
       onlineUsers.delete(kickedSid);
+
       // 更新在线人数
       await Room.findByIdAndUpdate(roomId, { $inc: { currentOnline: -1 } });
-      io.to(roomId).emit('updateOnline', { online: room.currentOnline - 1 }); // 注意这里要重新 fetch 或者减去1
-      // 广播离开消息
+      const updatedRoom = await Room.findById(roomId);
+      io.to(roomId).emit('updateOnline', { online: updatedRoom.currentOnline });
       io.to(roomId).emit('userLeft', { userId: userIdToKick });
     });
 
-    // 断开连接处理（玩家离开）
+    // 断开连接处理
     socket.on('disconnect', async () => {
       const userInfo = onlineUsers.get(socket.id);
       if (userInfo) {
         const { roomId, userId } = userInfo;
         try {
           await Room.findByIdAndUpdate(roomId, { $inc: { currentOnline: -1 } });
-          io.to(roomId).emit('updateOnline', { online: 0 }); // 需要精确计算，可再 fetch
           io.to(roomId).emit('userLeft', { userId });
-          // 正确获取最新的在线数
           const room = await Room.findById(roomId);
           if (room) {
             io.to(roomId).emit('updateOnline', { online: room.currentOnline });
