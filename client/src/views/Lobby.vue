@@ -2,16 +2,27 @@
   <div class="lobby-container">
     <NavBar />
     <h1>房间大厅</h1>
-    <el-button type="success" @click="$router.push('/create-room')" style="margin-bottom:20px">+ 创建房间</el-button>
-    
-    <!-- 房间列表 -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <el-button type="success" @click="$router.push('/create-room')">+ 创建房间</el-button>
+      <el-input 
+        v-model="roomSearch" 
+        placeholder="搜索房间..." 
+        clearable 
+        @clear="fetchRooms" 
+        @keyup.enter="fetchRooms"
+        style="width: 250px;"
+      />
+    </div>
+
     <el-row :gutter="20">
       <el-col :span="8" v-for="room in rooms" :key="room._id">
         <el-card class="room-card" @click="goRoom(room._id)">
           <h3>{{ room.title }}</h3>
           <p>{{ room.description || '暂无简介' }}</p>
           <p>
-            <el-tag size="small">{{ room.creator?.username }}</el-tag>
+            <router-link :to="`/user/${room.creator?._id}`" @click.stop>
+              <el-tag size="small" type="info">{{ room.creator?.username }}</el-tag>
+            </router-link>
             热度: {{ room.hotScore?.toFixed(1) }}
           </p>
         </el-card>
@@ -20,9 +31,18 @@
     <el-empty v-if="rooms.length === 0" description="暂无房间，快去创建一个吧！" />
 
     <el-divider />
-    <h2>最新帖子</h2>
-    
-    <!-- 帖子列表 -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h2>最新帖子</h2>
+      <el-input 
+        v-model="postSearch" 
+        placeholder="搜索帖子..." 
+        clearable 
+        @clear="fetchPosts" 
+        @keyup.enter="fetchPosts"
+        style="width: 250px;"
+      />
+    </div>
+
     <el-row :gutter="20">
       <el-col :span="24" v-for="post in posts" :key="post._id" style="margin-bottom:15px">
         <el-card>
@@ -30,7 +50,10 @@
             <el-tag :type="post.type === 'find_people' ? 'warning' : 'success'">
               {{ post.type === 'find_people' ? '寻人' : '交换' }}
             </el-tag>
-            <small>{{ post.author?.username }} - {{ new Date(post.createdAt).toLocaleString() }}</small>
+            <router-link :to="`/user/${post.author?._id}`">
+              <small>{{ post.author?.username }}</small>
+            </router-link>
+            <small> - {{ new Date(post.createdAt).toLocaleString() }}</small>
           </p>
           <p>{{ post.content }}</p>
         </el-card>
@@ -49,24 +72,28 @@ import NavBar from '../components/NavBar.vue';
 const router = useRouter();
 const rooms = ref([]);
 const posts = ref([]);
+const roomSearch = ref('');
+const postSearch = ref('');
 
-// 获取房间列表
 const fetchRooms = async () => {
   try {
-    const { data } = await api.get('/rooms/lobby');
+    const params = {};
+    if (roomSearch.value) params.search = roomSearch.value;
+    const { data } = await api.get('/rooms/lobby', { params });
     rooms.value = data;
   } catch (err) {
-    console.error('获取房间列表失败:', err);
+    console.error(err);
   }
 };
 
-// 获取帖子列表
 const fetchPosts = async () => {
   try {
-    const { data } = await api.get('/posts');
+    const params = {};
+    if (postSearch.value) params.search = postSearch.value;
+    const { data } = await api.get('/posts', { params });
     posts.value = data;
   } catch (err) {
-    console.error('获取帖子列表失败:', err);
+    console.error(err);
   }
 };
 

@@ -3,7 +3,14 @@
     <NavBar />
     <h1>{{ room.title }}</h1>
     <el-descriptions :column="2" border>
-      <el-descriptions-item label="创建者">{{ room.creator?.username }}</el-descriptions-item>
+      <el-descriptions-item label="创建者">
+        <router-link
+          :to="`/user/${room.creator?._id}`"
+          style="color: #409eff; text-decoration: none;"
+        >
+          {{ room.creator?.username }}
+        </router-link>
+      </el-descriptions-item>
       <el-descriptions-item label="简介">{{ room.description || '无' }}</el-descriptions-item>
       <el-descriptions-item label="在线人数">{{ onlineCount }}</el-descriptions-item>
       <el-descriptions-item label="浏览数">{{ room.views }}</el-descriptions-item>
@@ -25,13 +32,21 @@
       <h4>在线用户 ({{ onlineUsers.length }})</h4>
       <ul>
         <li v-for="u in onlineUsers" :key="u.userId">
-          <span :style="{ fontWeight: u.userId === room.creator?._id ? 'bold' : 'normal' }">
-            {{ u.username }} {{ u.userId === room.creator?._id ? '(房主)' : '' }}
-          </span>
-          <el-button 
-            v-if="isCreator && u.userId !== currentUserId" 
-            type="danger" 
-            size="small" 
+          <router-link
+            :to="`/user/${u.userId}`"
+            :style="{
+              fontWeight: u.userId === room.creator?._id ? 'bold' : 'normal',
+              color: '#409eff',
+              textDecoration: 'none'
+            }"
+          >
+            {{ u.username }}
+          </router-link>
+          <span v-if="u.userId === room.creator?._id" style="margin-left: 4px; color: #666;">(房主)</span>
+          <el-button
+            v-if="isCreator && u.userId !== currentUserId"
+            type="danger"
+            size="small"
             @click="kickUser(u.userId)"
             style="margin-left: 10px"
           >
@@ -51,10 +66,10 @@
     </div>
 
     <div class="presets">
-      <el-button 
-        v-for="preset in presets" 
-        :key="preset" 
-        size="small" 
+      <el-button
+        v-for="preset in presets"
+        :key="preset"
+        size="small"
         @click="sendMessage(preset)"
         type="info"
         plain
@@ -141,9 +156,9 @@ onMounted(async () => {
 
   socket.on('kicked', ({ msg }) => {
     ElMessage.error(msg);
-    socket.disconnect(); // 立刻断开连接
+    socket.disconnect();
     setTimeout(() => {
-      window.location.href = '/lobby'; // 硬跳转确保脱离房间
+      window.location.href = '/lobby';
     }, 500);
   });
 

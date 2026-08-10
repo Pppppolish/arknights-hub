@@ -33,6 +33,18 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
+// 获取我的活跃房间
+router.get('/mine', auth, async (req, res) => {
+  try {
+    const room = await Room.findOne({ creator: req.user.userId, isActive: true }).populate('creator', 'username');
+    if (!room) return res.status(404).json({ msg: '没有活跃房间' });
+    res.json(room);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: '服务器错误' });
+  }
+});
+
 // 获取大厅列表（热门房间，按热度降序）
 router.get('/lobby', async (req, res) => {
   try {
