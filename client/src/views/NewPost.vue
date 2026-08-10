@@ -10,25 +10,58 @@
             <el-option label="交换生物" value="exchange" />
           </el-select>
         </el-form-item>
+
+        <!-- 交换生物类型特有的选择 -->
         <template v-if="form.type">
           <el-form-item :label="label1" prop="keyword1">
-            <el-input v-model="form.keyword1" :placeholder="placeholder1" />
+            <el-select
+              v-model="form.keyword1"
+              :placeholder="placeholder1"
+              filterable
+              clearable
+            >
+              <el-option
+                v-for="bio in bioList"
+                :key="bio"
+                :label="bio"
+                :value="bio"
+              />
+            </el-select>
           </el-form-item>
           <el-form-item :label="label2" prop="keyword2">
-            <el-input v-model="form.keyword2" :placeholder="placeholder2" />
+            <el-select
+              v-model="form.keyword2"
+              :placeholder="placeholder2"
+              filterable
+              clearable
+            >
+              <el-option
+                v-for="bio in bioList"
+                :key="bio"
+                :label="bio"
+                :value="bio"
+              />
+            </el-select>
           </el-form-item>
           <el-form-item label="游戏ID" prop="gameId">
             <el-input v-model="form.gameId" placeholder="你的游戏ID" />
           </el-form-item>
           <el-form-item label="额外说明" prop="extra">
-            <el-input v-model="form.extra" type="textarea" placeholder="选填，补充信息" />
+            <el-input
+              v-model="form.extra"
+              type="textarea"
+              placeholder="选填，限10个字"
+              maxlength="10"
+              show-word-limit
+            />
           </el-form-item>
         </template>
         <el-form-item>
           <el-button type="primary" @click="submitForm" :loading="loading">发布</el-button>
         </el-form-item>
       </el-form>
-      <!-- 实时预览生成的内容 -->
+
+      <!-- 实时预览 -->
       <div v-if="previewContent" class="preview">
         <h4>预览：</h4>
         <p>{{ previewContent }}</p>
@@ -54,18 +87,24 @@ const form = reactive({
   extra: ''
 });
 
-const rules = {
-  type: [{ required: true, message: '请选择类型', trigger: 'change' }],
-  keyword1: [{ required: true, message: '必填' }],
-  keyword2: [{ required: true, message: '必填' }],
-  gameId: [{ required: true, message: '必填' }]
-};
+// 预设的生物列表（全部可选）
+const bioList = [
+  '锐爪巨翼兽', '星术绒绒', '奥术绒绒', '青花', '赤霞', '“酩酊”',
+  '大个子绒绒', '灼热跳跳蜥',
+  '活泼绒绒', '爬行鬼伞', '“阿咬”', '大嘴捕食草',
+  '高普尼克', '石背岩壳蟹', '不知足吞噬者', '孤独的巨像',
+  '密林锋脊裂兽', '枯焦锋脊裂兽', '寒山大角驮兽', '温和驮兽',
+  '固海凿石者', '困困荪茸', '浪花小壳蟹', '熔火小壳蟹',
+  '未定义石兽', '花冠园丁', '黑毛花冠园丁', '果冻清道夫', '钵海收割者',
+  '蓝冠羽镖客', '橙冠羽镖客', '深林伪形兽', '赤黑伪形兽',
+  '直立小雪怪', '红宝石投石虫', '石榴弩手', '椰壳蟹'
+];
 
 // 根据类型动态改变标签和占位符
 const label1 = computed(() => form.type === 'find_people' ? '寻找对象' : '我的东西');
-const placeholder1 = computed(() => form.type === 'find_people' ? '如：某博士' : '如：奇象A');
+const placeholder1 = computed(() => form.type === 'find_people' ? '如：某博士' : '选择你要交换的生物');
 const label2 = computed(() => form.type === 'find_people' ? '目标' : '想换的东西');
-const placeholder2 = computed(() => form.type === 'find_people' ? '如：一起刷素材' : '如：奇象B');
+const placeholder2 = computed(() => form.type === 'find_people' ? '如：一起刷素材' : '选择你想要的生物');
 
 // 实时预览内容
 const previewContent = computed(() => {
@@ -79,6 +118,15 @@ const previewContent = computed(() => {
   return base + (form.extra ? `补充：${form.extra}` : '');
 });
 
+// 表单验证规则
+const rules = {
+  type: [{ required: true, message: '请选择类型', trigger: 'change' }],
+  keyword1: [{ required: true, message: '必填', trigger: 'change' }],
+  keyword2: [{ required: true, message: '必填', trigger: 'change' }],
+  gameId: [{ required: true, message: '必填' }]
+};
+
+// 提交数据
 const submitForm = async () => {
   if (!formRef.value) return;
   await formRef.value.validate(async (valid) => {
@@ -95,7 +143,7 @@ const submitForm = async () => {
         }
       });
       ElMessage.success('帖子发布成功！');
-      // 重置表单或跳转到帖子列表
+      // 重置表单
       form.type = '';
       form.keyword1 = '';
       form.keyword2 = '';
@@ -112,6 +160,15 @@ const submitForm = async () => {
 </script>
 
 <style scoped>
-.new-post { max-width: 600px; margin: 0 auto; padding: 20px; }
-.preview { margin-top: 20px; background: #f0f9eb; padding: 12px; border-radius: 4px; }
+.new-post {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.preview {
+  margin-top: 20px;
+  background: #f0f9eb;
+  padding: 12px;
+  border-radius: 4px;
+}
 </style>
