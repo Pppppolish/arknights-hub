@@ -3,7 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const Post = require('../models/Post');
 
-// 生成帖子内容文字（后端统一生成，防止前端不一致）
+// 生成帖子内容文字
 function generateContent(type, params) {
   let template;
   if (type === 'find_people') {
@@ -36,13 +36,16 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// 获取帖子列表（按时间倒序）
+// 获取帖子列表（支持搜索）
 router.get('/', async (req, res) => {
   try {
-    const { type } = req.query;
+    const { type, search } = req.query;
     const filter = {};
     if (type && ['find_people', 'exchange'].includes(type)) {
       filter.type = type;
+    }
+    if (search) {
+      filter.content = { $regex: search, $options: 'i' };
     }
     const posts = await Post.find(filter)
       .populate('author', 'username')
