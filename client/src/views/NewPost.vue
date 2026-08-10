@@ -11,14 +11,52 @@
           </el-select>
         </el-form-item>
 
-        <!-- 交换生物类型特有的选择 -->
-        <template v-if="form.type">
-          <el-form-item :label="label1" prop="keyword1">
+        <!-- 寻人类型的表单 -->
+        <template v-if="form.type === 'find_people'">
+          <el-form-item label="寻找对象" prop="keyword1">
+            <el-input
+              v-model="form.keyword1"
+              placeholder="如：(B服)Dr.Polishes#3167"
+              clearable
+            />
+          </el-form-item>
+          <el-form-item label="目标" prop="keyword2">
+            <el-select
+              v-model="form.keyword2"
+              placeholder="请选择你的目标"
+              clearable
+              filterable
+            >
+              <el-option
+                v-for="goal in goalsList"
+                :key="goal"
+                :label="goal"
+                :value="goal"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="游戏ID" prop="gameId">
+            <el-input v-model="form.gameId" placeholder="你的游戏ID" />
+          </el-form-item>
+          <el-form-item label="额外说明" prop="extra">
+            <el-input
+              v-model="form.extra"
+              type="textarea"
+              placeholder="选填，限10个字"
+              maxlength="10"
+              show-word-limit
+            />
+          </el-form-item>
+        </template>
+
+        <!-- 交换生物类型的表单 -->
+        <template v-else-if="form.type === 'exchange'">
+          <el-form-item label="我的东西" prop="keyword1">
             <el-select
               v-model="form.keyword1"
-              :placeholder="placeholder1"
-              filterable
+              placeholder="选择你要交换的生物"
               clearable
+              filterable
             >
               <el-option
                 v-for="bio in bioList"
@@ -28,12 +66,12 @@
               />
             </el-select>
           </el-form-item>
-          <el-form-item :label="label2" prop="keyword2">
+          <el-form-item label="想换的东西" prop="keyword2">
             <el-select
               v-model="form.keyword2"
-              :placeholder="placeholder2"
-              filterable
+              placeholder="选择你想要的生物"
               clearable
+              filterable
             >
               <el-option
                 v-for="bio in bioList"
@@ -56,6 +94,7 @@
             />
           </el-form-item>
         </template>
+
         <el-form-item>
           <el-button type="primary" @click="submitForm" :loading="loading">发布</el-button>
         </el-form-item>
@@ -87,7 +126,16 @@ const form = reactive({
   extra: ''
 });
 
-// 预设的生物列表（全部可选）
+// 寻人目标预设列表
+const goalsList = [
+  '求联系方式',
+  '奇象巡展分会场摆阵（如岁家，mujica）',
+  '助战扩列',
+  '一起听塞壬唱片',
+  '奇象对决求对手'
+];
+
+// 生物列表（用于交换）
 const bioList = [
   '锐爪巨翼兽', '星术绒绒', '奥术绒绒', '青花', '赤霞', '“酩酊”',
   '大个子绒绒', '灼热跳跳蜥',
@@ -100,33 +148,42 @@ const bioList = [
   '直立小雪怪', '红宝石投石虫', '石榴弩手', '椰壳蟹'
 ];
 
-// 根据类型动态改变标签和占位符
-const label1 = computed(() => form.type === 'find_people' ? '寻找对象' : '我的东西');
-const placeholder1 = computed(() => form.type === 'find_people' ? '如：某博士' : '选择你要交换的生物');
-const label2 = computed(() => form.type === 'find_people' ? '目标' : '想换的东西');
-const placeholder2 = computed(() => form.type === 'find_people' ? '如：一起刷素材' : '选择你想要的生物');
+// 表单验证规则
+const rules = computed(() => {
+  const baseRules = {
+    type: [{ required: true, message: '请选择类型', trigger: 'change' }],
+    gameId: [{ required: true, message: '请输入游戏ID', trigger: 'blur' }],
+  };
 
-// 实时预览内容
+  if (form.type === 'find_people') {
+    return {
+      ...baseRules,
+      keyword1: [{ required: true, message: '请输入寻找对象', trigger: 'blur' }],
+      keyword2: [{ required: true, message: '请选择目标', trigger: 'change' }],
+    };
+  } else if (form.type === 'exchange') {
+    return {
+      ...baseRules,
+      keyword1: [{ required: true, message: '请选择你的东西', trigger: 'change' }],
+      keyword2: [{ required: true, message: '请选择想换的东西', trigger: 'change' }],
+    };
+  }
+  return baseRules;
+});
+
+// 实时预览
 const previewContent = computed(() => {
   if (!form.type || !form.keyword1 || !form.keyword2 || !form.gameId) return '';
   let base;
   if (form.type === 'find_people') {
     base = `【寻人】我正在寻找“${form.keyword1}”，目标是“${form.keyword2}”，游戏ID：${form.gameId}。`;
-  } else {
+  } else if (form.type === 'exchange') {
     base = `【交换】我有“${form.keyword1}”，想换“${form.keyword2}”，游戏ID：${form.gameId}。`;
   }
   return base + (form.extra ? `补充：${form.extra}` : '');
 });
 
-// 表单验证规则
-const rules = {
-  type: [{ required: true, message: '请选择类型', trigger: 'change' }],
-  keyword1: [{ required: true, message: '必填', trigger: 'change' }],
-  keyword2: [{ required: true, message: '必填', trigger: 'change' }],
-  gameId: [{ required: true, message: '必填' }]
-};
-
-// 提交数据
+// 提交
 const submitForm = async () => {
   if (!formRef.value) return;
   await formRef.value.validate(async (valid) => {
@@ -143,7 +200,7 @@ const submitForm = async () => {
         }
       });
       ElMessage.success('帖子发布成功！');
-      // 重置表单
+      // 重置
       form.type = '';
       form.keyword1 = '';
       form.keyword2 = '';
@@ -160,15 +217,6 @@ const submitForm = async () => {
 </script>
 
 <style scoped>
-.new-post {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 20px;
-}
-.preview {
-  margin-top: 20px;
-  background: #f0f9eb;
-  padding: 12px;
-  border-radius: 4px;
-}
+.new-post { max-width: 600px; margin: 0 auto; padding: 20px; }
+.preview { margin-top: 20px; background: #f0f9eb; padding: 12px; border-radius: 4px; }
 </style>
