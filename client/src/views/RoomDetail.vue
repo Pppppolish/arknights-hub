@@ -170,9 +170,9 @@ const presets = [
 
 // ============= 音乐播放器状态 =============
 const playlist = ref([
-  { name: '歌曲1', src: '/music/song1.mp3' },
-  { name: '歌曲2', src: '/music/song2.mp3' },
-  { name: '歌曲3', src: '/music/song3.mp3' }
+  { name: '净罪', src: '/music/song1.mp3' },
+  { name: '弧光', src: '/music/song2.mp3' },
+  { name: '涤墨', src: '/music/song3.mp3' }
 ]);
 const currentTrackIndex = ref(0);
 const isPlaying = ref(false);
