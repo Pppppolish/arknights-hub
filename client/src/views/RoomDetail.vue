@@ -17,6 +17,27 @@
 
     <el-divider />
     
+    <!-- 在线用户列表 -->
+    <div class="online-users">
+      <h4>在线用户</h4>
+      <ul>
+        <li v-for="u in onlineUsers" :key="u.userId">
+          <span :style="{ fontWeight: u.userId === creatorId ? 'bold' : 'normal' }">
+            {{ u.username }} {{ u.userId === creatorId ? '(房主)' : '' }}
+          </span>
+          <el-button 
+            v-if="isCreator && u.userId !== currentUserId" 
+            type="danger" 
+            size="small" 
+            @click="kickUser(u.userId)"
+            style="margin-left: 10px"
+          >
+            踢出
+          </el-button>
+        </li>
+      </ul>
+    </div>
+
     <!-- 聊天区域 -->
     <div class="chat-box" ref="chatBox">
       <div v-for="(msg, idx) in messages" :key="idx" class="message">
@@ -41,39 +62,30 @@
       </el-button>
     </div>
 
-    <!-- 自定义消息输入 -->
-    <div class="input-area">
-      <el-input 
-        v-model="inputMsg" 
-        placeholder="输入消息..." 
-        @keyup.enter="sendMessage(inputMsg)"
-        clearable
-      >
-        <template #append>
-          <el-button @click="sendMessage(inputMsg)">发送</el-button>
-        </template>
-      </el-input>
-    </div>
+    <!-- 移除自定义输入框 -->
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, onMounted, nextTick, computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { io } from 'socket.io-client';
 import api from '../utils/api';
+import NavBar from '../components/NavBar.vue';
 
 const route = useRoute();
 const room = ref(null);
 const onlineCount = ref(0);
 const messages = ref([]);
-const inputMsg = ref('');
 const chatBox = ref(null);
+const onlineUsers = ref([]);
+const creatorId = ref(null);
 
 const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+const currentUserId = computed(() => currentUser.id);
+const isCreator = computed(() => room.value?.creator?._id === currentUserId.value);
 
-// 预制消息库（以后可扩展）
 const presets = [
   '你好，我想加入会场，请加我微信！',
   '一起打奇象巡展，我这边差一个人。',
@@ -81,42 +93,64 @@ const presets = [
   '交换奇象生物，我有XXX想换YYY。'
 ];
 
-// 连接 Socket
-const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000');
+// Socket 连接
+const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://39.105.5.72');
 
 onMounted(async () => {
   try {
     const { data } = await api.get(`/rooms/${route.params.id}`);
     room.value = data;
+    creatorId.value = data.creator?._id;
   } catch (err) {
     ElMessage.error('房间不存在或加载失败');
     return;
   }
 
-  // 加入房间频道
+  // 加入房间
   socket.emit('joinRoom', {
     roomId: route.params.id,
-    userId: currentUser.id || 'anonymous'
+    userId: currentUserId.value,
+    username: currentUser.username || '游客'
   });
 
-  // 监听在线人数更新
+  socket.on('onlineUsers', ({ users, creator }) => {
+    onlineUsers.value = users;
+    creatorId.value = creator;
+  });
+
+  socket.on('userJoined', ({ userId, username }) => {
+    onlineUsers.value.push({ userId, username });
+  });
+
+  socket.on('userLeft', ({ userId }) => {
+    onlineUsers.value = onlineUsers.value.filter(u => u.userId !== userId);
+  });
+
   socket.on('updateOnline', ({ online }) => {
     onlineCount.value = online;
   });
 
-  // 监听新消息
   socket.on('newMessage', (message) => {
     messages.value.push(message);
-    // 自动滚动到底部
     nextTick(() => {
       if (chatBox.value) {
         chatBox.value.scrollTop = chatBox.value.scrollHeight;
       }
     });
   });
+
+  socket.on('kicked', ({ msg }) => {
+    ElMessage.error(msg);
+    setTimeout(() => {
+      window.location.href = '/lobby';
+    }, 2000);
+  });
+
+  socket.on('error', ({ msg }) => {
+    ElMessage.error(msg);
+  });
 });
 
-// 发送消息（预制或自定义）
 const sendMessage = (text) => {
   if (!text.trim()) return;
   socket.emit('chatMessage', {
@@ -124,7 +158,15 @@ const sendMessage = (text) => {
     content: text,
     senderName: currentUser.username || '游客'
   });
-  inputMsg.value = '';
+};
+
+const kickUser = async (userIdToKick) => {
+  try {
+    await ElMessageBox.confirm('确定要踢出该用户吗？', '警告', { type: 'warning' });
+    socket.emit('kickUser', { userIdToKick, roomId: route.params.id });
+  } catch (err) {
+    // 取消操作
+  }
 };
 
 const copyCode = () => {
@@ -150,5 +192,5 @@ const copyCode = () => {
 .time { font-size: 12px; color: #999; margin-left: 8px; }
 .presets { margin-bottom: 12px; }
 .presets .el-button { margin-right: 8px; margin-bottom: 6px; }
-.input-area { margin-top: 12px; }
+.online-users { margin-top: 20px; }
 </style>

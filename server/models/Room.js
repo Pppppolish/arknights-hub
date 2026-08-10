@@ -18,7 +18,7 @@ const roomSchema = new mongoose.Schema({
     required: [true, '房间码不能为空'],
     validate: {
       validator: function(v) {
-        return /^\[[a-zA-Z0-9]+\][a-zA-Z0-9._]+#\d+邀请你加入个人会场$/.test(v) && v.length <= 100;
+        return /^\[[a-zA-Z0-9]+\][\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9._]+#\d+邀请你加入个人会场$/u.test(v) && v.length <= 100;
       },
       message: '房间码格式不正确或过长'
     }

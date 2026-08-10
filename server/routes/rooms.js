@@ -7,10 +7,17 @@ const auth = require('../middleware/auth');
 router.post('/', auth, async (req, res) => {
   try {
     const { title, description, inviteCode, tags } = req.body;
-    // 手动校验房间码（双重保险）
-    if (!/^\[[a-zA-Z0-9]+\][a-zA-Z0-9._]+#\d+邀请你加入个人会场$/.test(inviteCode) || inviteCode.length > 100) {
+    // 房间码校验（已更新）
+    if (!/^\[[a-zA-Z0-9]+\][\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9._]+#\d+邀请你加入个人会场$/u.test(inviteCode) || inviteCode.length > 100) {
       return res.status(400).json({ msg: '房间码格式不正确' });
     }
+
+    // 检查是否已有活跃房间
+    const existingRoom = await Room.findOne({ creator: req.user.userId, isActive: true });
+    if (existingRoom) {
+      return res.status(400).json({ msg: '你已有一个活跃房间，不能创建新房间' });
+    }
+
     const room = new Room({
       title,
       description,

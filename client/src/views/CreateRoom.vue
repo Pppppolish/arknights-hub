@@ -42,7 +42,7 @@ const form = reactive({
 const validateInviteCode = (rule, value, callback) => {
   if (!value) {
     callback(new Error('房间码不能为空'));
-  } else if (!/^\[[a-zA-Z0-9]+\][a-zA-Z0-9._]+#\d+邀请你加入个人会场$/.test(value)) {
+  } else if (!/^\[[a-zA-Z0-9]+\][\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9._]+#\d+邀请你加入个人会场$/u.test(value)) {
     callback(new Error('格式不正确，请参考示例'));
   } else if (value.length > 100) {
     callback(new Error('长度不能超过100字符'));
