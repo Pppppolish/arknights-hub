@@ -116,17 +116,38 @@
       <el-empty v-if="messages.length === 0" description="暂无消息" />
     </div>
 
-    <div class="presets">
-      <el-button
-        v-for="preset in presets"
-        :key="preset"
-        size="small"
-        @click="sendMessage(preset)"
-        type="info"
-        plain
+    <!-- 预制消息发送区域 -->
+    <div class="input-area">
+      <el-input
+        v-model="selectedMsg"
+        placeholder="请从预制消息中选择..."
+        readonly
+        @keyup.enter="sendSelected"
       >
-        {{ preset }}
-      </el-button>
+        <template #append>
+          <el-button @click="sendSelected" :disabled="!selectedMsg.trim()">发送</el-button>
+        </template>
+      </el-input>
+      <el-popover
+        placement="top"
+        :width="360"
+        trigger="click"
+        :show-arrow="false"
+      >
+        <template #reference>
+          <el-button type="primary" style="margin-left: 10px;">预制消息</el-button>
+        </template>
+        <div class="preset-list">
+          <div
+            v-for="(preset, idx) in presets"
+            :key="idx"
+            class="preset-item"
+            @click="selectPreset(preset)"
+          >
+            {{ preset }}
+          </div>
+        </div>
+      </el-popover>
     </div>
   </div>
 </template>
@@ -148,42 +169,44 @@ const messages = ref([]);
 const chatBox = ref(null);
 const onlineUsers = ref([]);
 const audioPlayer = ref(null);
+const selectedMsg = ref(''); // 当前选中的预制消息
 
 const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 const currentUserId = computed(() => currentUser.id);
 const isCreator = computed(() => room.value?.creator?._id === currentUserId.value);
 
+// 预制消息列表（无序号）
 const presets = [
-  '1. 来一场奇象拟合对战吗，斗蛐蛐时间到！',
-  '2. 有人交换奇象吗，缺的生物可以拿出来互换～',
-  '3. 我正在刷草丛，希望能刷出闪光奇象！',
-  '4. 属性克制很关键，对战前记得留意对手阵容。',
-  '5. 求三星奇象，有没有博士可以交换图鉴？',
-  '6. 欢迎来到奇象巡展，一起来收集奇象生物吧。',
-  '7. 诱捕剂已经备好，准备去野外碰碰运气。',
-  '8. 刚抓到新奇象，快来看看我的收藏！',
-  '9. 巡展像素画已完成，欢迎前来欣赏打分。',
-  '10. 快速对决来一把，三局两胜切磋一下。',
-  '11. 图鉴还差几只，蹲大佬互通有无。',
-  '12. 小心！别被果冻王的人海战术拿捏了。',
-  '13. 新区域解锁，这里可以捕捉不一样的奇象。',
-  '14. 打完收工，今天的巡展纪念章拿到手啦。',
-  '15. 有人一起逛广场，看看其他人的像素作品吗？',
-  '16. 奇术、本能、百变，别搞错属性克制关系哦。',
-  '17. 这局输了，再来一局，我要调整阵容。',
-  '18. 蹲一个稀有奇象，愿意拿多只生物交换。',
-  '19. 草丛逛半天啥也没刷到，非酋实锤了。',
-  '20. 玩得很尽兴，感谢各位博士的陪伴！',
-  '21. 大家好，很高兴来到这个房间！',
-  '22. 各位玩得开心，祝大家都刷到稀有奇象。',
-  '23. 多谢陪玩，这一局体验非常愉快～',
-  '24. 有什么想聊的都可以在房间里说一说。',
-  '25. 慢慢来不用急，享受巡展的乐趣就好。',
-  '26. 哇，你的奇象收藏好厉害，大开眼界！',
-  '27. 如果需要帮忙可以直接在房间喊我。',
-  '28. 很高兴认识各位博士，以后常来玩呀。',
-  '29. 时间差不多啦，我先准备下线咯，拜拜。',
-  '30. 感谢各位的陪伴，期待下次再一起游玩。'
+  '来一场奇象拟合对战吗，斗蛐蛐时间到！',
+  '有人交换奇象吗，缺的生物可以拿出来互换～',
+  '我正在刷草丛，希望能刷出闪光奇象！',
+  '属性克制很关键，对战前记得留意对手阵容。',
+  '求三星奇象，有没有博士可以交换图鉴？',
+  '欢迎来到奇象巡展，一起来收集奇象生物吧。',
+  '诱捕剂已经备好，准备去野外碰碰运气。',
+  '刚抓到新奇象，快来看看我的收藏！',
+  '巡展像素画已完成，欢迎前来欣赏打分。',
+  '快速对决来一把，三局两胜切磋一下。',
+  '图鉴还差几只，蹲大佬互通有无。',
+  '小心！别被果冻王的人海战术拿捏了。',
+  '新区域解锁，这里可以捕捉不一样的奇象。',
+  '打完收工，今天的巡展纪念章拿到手啦。',
+  '有人一起逛广场，看看其他人的像素作品吗？',
+  '奇术、本能、百变，别搞错属性克制关系哦。',
+  '这局输了，再来一局，我要调整阵容。',
+  '蹲一个稀有奇象，愿意拿多只生物交换。',
+  '草丛逛半天啥也没刷到，非酋实锤了。',
+  '玩得很尽兴，感谢各位博士的陪伴！',
+  '大家好，很高兴来到这个房间！',
+  '各位玩得开心，祝大家都刷到稀有奇象。',
+  '多谢陪玩，这一局体验非常愉快～',
+  '有什么想聊的都可以在房间里说一说。',
+  '慢慢来不用急，享受巡展的乐趣就好。',
+  '哇，你的奇象收藏好厉害，大开眼界！',
+  '如果需要帮忙可以直接在房间喊我。',
+  '很高兴认识各位博士，以后常来玩呀。',
+  '时间差不多啦，我先准备下线咯，拜拜。',
+  '感谢各位的陪伴，期待下次再一起游玩。'
 ];
 
 // 音乐播放器状态
@@ -220,7 +243,6 @@ const onTimeUpdate = () => {
 const onLoaded = () => {
   if (audioPlayer.value) {
     duration.value = audioPlayer.value.duration || 0;
-    // 不重置音量，保持用户选择
   }
 };
 
@@ -235,7 +257,6 @@ const onEnded = () => {
   }
 };
 
-// 初始化第一首歌，确保在 DOM 更新后调用
 const initPlayer = async () => {
   await nextTick();
   const track = playlist.value[0];
@@ -245,20 +266,15 @@ const initPlayer = async () => {
   }
 };
 
-// 切换歌曲
 const changeTrack = () => {
   const track = playlist.value[currentTrackIndex.value];
   if (!audioPlayer.value) return;
-
   audioPlayer.value.pause();
   audioPlayer.value.src = track.src;
   audioPlayer.value.load();
-
   if (isPlaying.value) {
-    // 切歌后如果需要播放，尝试播放（可能已经被暂停）
     audioPlayer.value.play().catch(() => {});
   }
-
   if (isCreator.value) {
     socket.emit('musicControl', {
       roomId: route.params.id,
@@ -268,7 +284,6 @@ const changeTrack = () => {
   }
 };
 
-// 播放 / 暂停
 const togglePlay = () => {
   if (!isCreator.value) return;
   isPlaying.value = !isPlaying.value;
@@ -284,7 +299,6 @@ const togglePlay = () => {
   });
 };
 
-// 拖拽进度条
 const seekTo = (percent) => {
   if (!isCreator.value || !audioPlayer.value || !duration.value) return;
   const newTime = (percent / 100) * duration.value;
@@ -296,7 +310,6 @@ const seekTo = (percent) => {
   });
 };
 
-// 调节音量（仅本地）
 const changeVolume = (val) => {
   volume.value = val;
   if (audioPlayer.value) {
@@ -306,12 +319,10 @@ const changeVolume = (val) => {
 
 const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://39.105.5.72');
 
-// 音乐同步事件（非房主接收）
 socket.on('musicSync', ({ action, data }) => {
   if (isCreator.value) return;
   const player = audioPlayer.value;
   if (!player) return;
-
   switch (action) {
     case 'play':
       player.currentTime = data.currentTime || 0;
@@ -342,11 +353,26 @@ socket.on('musicSync', ({ action, data }) => {
   }
 });
 
+// 选择预制消息
+const selectPreset = (text) => {
+  selectedMsg.value = text;
+};
+
+// 发送当前选中的消息
+const sendSelected = () => {
+  if (!selectedMsg.value.trim()) return;
+  socket.emit('chatMessage', {
+    roomId: route.params.id,
+    content: selectedMsg.value.trim(),
+    senderName: currentUser.username || '游客'
+  });
+  selectedMsg.value = ''; // 发送后清空输入框
+};
+
 onMounted(async () => {
   try {
     const { data } = await api.get(`/rooms/${route.params.id}`);
     room.value = data;
-    // ✅ 等待 DOM 完成渲染后再初始化播放器
     await nextTick();
     initPlayer();
   } catch (err) {
@@ -412,16 +438,6 @@ onMounted(async () => {
 onUnmounted(() => {
   socket.disconnect();
 });
-
-// 下面三个功能函数保持不变
-const sendMessage = (text) => {
-  if (!text.trim()) return;
-  socket.emit('chatMessage', {
-    roomId: route.params.id,
-    content: text,
-    senderName: currentUser.username || '游客'
-  });
-};
 
 const kickUser = async (userIdToKick) => {
   try {
@@ -494,18 +510,33 @@ const copyCode = () => {
   color: #999;
   margin-left: 8px;
 }
-.presets {
-  margin-bottom: 12px;
-}
-.presets .el-button {
-  margin-right: 8px;
-  margin-bottom: 6px;
-}
 .online-users ul {
   list-style: none;
   padding: 0;
 }
 .online-users li {
   margin: 5px 0;
+}
+
+/* 预制消息发送区域 */
+.input-area {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+}
+.preset-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+.preset-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  transition: background-color 0.2s;
+}
+.preset-item:hover {
+  background-color: #f5f7fa;
 }
 </style>
