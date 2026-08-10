@@ -15,14 +15,12 @@
       </el-descriptions-item>
     </el-descriptions>
 
-    <!-- 房主专属操作 -->
     <div v-if="isCreator" style="margin: 20px 0;">
       <el-button type="danger" @click="deleteRoom">删除房间</el-button>
     </div>
 
     <el-divider />
 
-    <!-- 在线用户列表 -->
     <div class="online-users">
       <h4>在线用户 ({{ onlineUsers.length }})</h4>
       <ul>
@@ -43,7 +41,6 @@
       </ul>
     </div>
 
-    <!-- 聊天区域 -->
     <div class="chat-box" ref="chatBox">
       <div v-for="(msg, idx) in messages" :key="idx" class="message">
         <span class="sender">{{ msg.senderName }}：</span>
@@ -53,7 +50,6 @@
       <el-empty v-if="messages.length === 0" description="暂无消息" />
     </div>
 
-    <!-- 预制消息按钮行 -->
     <div class="presets">
       <el-button 
         v-for="preset in presets" 
@@ -96,7 +92,6 @@ const presets = [
   '交换奇象生物，我有XXX想换YYY。'
 ];
 
-// Socket 连接
 const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://39.105.5.72');
 
 onMounted(async () => {
@@ -108,7 +103,6 @@ onMounted(async () => {
     return;
   }
 
-  // 加入房间
   socket.emit('joinRoom', {
     roomId: route.params.id,
     userId: currentUserId.value,
@@ -147,9 +141,9 @@ onMounted(async () => {
 
   socket.on('kicked', ({ msg }) => {
     ElMessage.error(msg);
-    socket.disconnect(); // 立即断开，防止继续通信
+    socket.disconnect(); // 立刻断开连接
     setTimeout(() => {
-      window.location.href = '/lobby'; // 用硬跳转确保组件销毁
+      window.location.href = '/lobby'; // 硬跳转确保脱离房间
     }, 500);
   });
 
@@ -162,6 +156,7 @@ onMounted(async () => {
       ElMessage.error(msg);
     }
   });
+});
 
 const sendMessage = (text) => {
   if (!text.trim()) return;
