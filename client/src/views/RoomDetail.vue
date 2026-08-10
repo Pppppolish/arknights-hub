@@ -64,9 +64,9 @@
         </div>
 
         <div style="display: flex; align-items: center; width: 140px;">
-          <el-icon><VolumeDown /></el-icon>
+          <el-button icon="ArrowDown" circle size="small" @click="volume = Math.max(0, volume-10); changeVolume(volume)" />
           <el-slider v-model="volume" @input="changeVolume" style="flex:1; margin: 0 5px;" :max="100" />
-          <el-icon><VolumeUp /></el-icon>
+          <el-button icon="ArrowUp" circle size="small" @click="volume = Math.min(100, volume+10); changeVolume(volume)" />
         </div>
       </div>
       <audio ref="audioPlayer" @timeupdate="onTimeUpdate" @loadedmetadata="onLoaded" @ended="onEnded" />
@@ -133,7 +133,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { io } from 'socket.io-client';
 import api from '../utils/api';
 import NavBar from '../components/NavBar.vue';
-import { VolumeDown, VolumeUp, VideoPlay, VideoPause } from '@element-plus/icons-vue';
+import { ArrowDown, ArrowUp, VideoPlay, VideoPause } from '@element-plus/icons-vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -155,7 +155,7 @@ const presets = [
   '交换奇象生物，我有XXX想换YYY。'
 ];
 
-// 播放列表（歌曲名和路径）
+// 播放列表
 const playlist = ref([
   { name: '净罪作战主题曲', src: '/music/song1.mp3' },
   { name: '弧光作战主题曲', src: '/music/song2.mp3' },
@@ -200,7 +200,6 @@ const onEnded = () => {
   }
 };
 
-// 初始化第一首歌（只加载，不播放）
 const initPlayer = () => {
   const track = playlist.value[0];
   if (audioPlayer.value && track) {
@@ -209,11 +208,9 @@ const initPlayer = () => {
   }
 };
 
-// 切换歌曲
 const changeTrack = () => {
   const track = playlist.value[currentTrackIndex.value];
   if (!audioPlayer.value) return;
-  // 先暂停，清除可能的中断错误
   audioPlayer.value.pause();
   audioPlayer.value.src = track.src;
   audioPlayer.value.load();
@@ -229,7 +226,6 @@ const changeTrack = () => {
   }
 };
 
-// 播放/暂停
 const togglePlay = () => {
   if (!isCreator.value) return;
   isPlaying.value = !isPlaying.value;
@@ -245,7 +241,6 @@ const togglePlay = () => {
   });
 };
 
-// 拖动进度条
 const seekTo = (percent) => {
   if (!isCreator.value || !audioPlayer.value || !duration.value) return;
   const newTime = (percent / 100) * duration.value;
@@ -257,7 +252,6 @@ const seekTo = (percent) => {
   });
 };
 
-// 调节音量（仅本地，不同步）
 const changeVolume = (val) => {
   volume.value = val;
   if (audioPlayer.value) {
@@ -267,7 +261,6 @@ const changeVolume = (val) => {
 
 const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://39.105.5.72');
 
-// 音乐同步事件（非房主接收）
 socket.on('musicSync', ({ action, data }) => {
   if (isCreator.value) return;
   const player = audioPlayer.value;
@@ -366,7 +359,6 @@ onMounted(async () => {
     }
   });
 
-  // 初始化第一首歌
   initPlayer();
 });
 
