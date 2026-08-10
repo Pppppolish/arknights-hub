@@ -69,7 +69,12 @@
           <el-button icon="ArrowUp" circle size="small" @click="volume = Math.min(100, volume+10); changeVolume(volume)" />
         </div>
       </div>
-      <audio ref="audioPlayer" @timeupdate="onTimeUpdate" @loadedmetadata="onLoaded" @ended="onEnded" />
+      <audio
+        ref="audioPlayer"
+        @timeupdate="onTimeUpdate"
+        @loadedmetadata="onLoaded"
+        @ended="onEnded"
+      />
     </div>
 
     <el-divider />
@@ -155,7 +160,7 @@ const presets = [
   '交换奇象生物，我有XXX想换YYY。'
 ];
 
-// 播放列表
+// 音乐播放器状态
 const playlist = ref([
   { name: '净罪作战主题曲', src: '/music/song1.mp3' },
   { name: '弧光作战主题曲', src: '/music/song2.mp3' },
@@ -178,14 +183,16 @@ const formatTime = (seconds) => {
 const onTimeUpdate = () => {
   if (audioPlayer.value) {
     currentTime.value = audioPlayer.value.currentTime;
-    progressPercent.value = duration.value ? (audioPlayer.value.currentTime / duration.value) * 100 : 0;
+    progressPercent.value = duration.value
+      ? (audioPlayer.value.currentTime / duration.value) * 100
+      : 0;
   }
 };
 
 const onLoaded = () => {
   if (audioPlayer.value) {
-    duration.value = audioPlayer.value.duration;
-    volume.value = audioPlayer.value.volume * 100;
+    duration.value = audioPlayer.value.duration || 0;
+    // 不重置音量，保持用户选择
   }
 };
 
@@ -200,7 +207,9 @@ const onEnded = () => {
   }
 };
 
-const initPlayer = () => {
+// 初始化第一首歌，确保在 DOM 更新后调用
+const initPlayer = async () => {
+  await nextTick();
   const track = playlist.value[0];
   if (audioPlayer.value && track) {
     audioPlayer.value.src = track.src;
@@ -208,15 +217,20 @@ const initPlayer = () => {
   }
 };
 
+// 切换歌曲
 const changeTrack = () => {
   const track = playlist.value[currentTrackIndex.value];
   if (!audioPlayer.value) return;
+
   audioPlayer.value.pause();
   audioPlayer.value.src = track.src;
   audioPlayer.value.load();
+
   if (isPlaying.value) {
+    // 切歌后如果需要播放，尝试播放（可能已经被暂停）
     audioPlayer.value.play().catch(() => {});
   }
+
   if (isCreator.value) {
     socket.emit('musicControl', {
       roomId: route.params.id,
@@ -226,6 +240,7 @@ const changeTrack = () => {
   }
 };
 
+// 播放 / 暂停
 const togglePlay = () => {
   if (!isCreator.value) return;
   isPlaying.value = !isPlaying.value;
@@ -241,6 +256,7 @@ const togglePlay = () => {
   });
 };
 
+// 拖拽进度条
 const seekTo = (percent) => {
   if (!isCreator.value || !audioPlayer.value || !duration.value) return;
   const newTime = (percent / 100) * duration.value;
@@ -252,6 +268,7 @@ const seekTo = (percent) => {
   });
 };
 
+// 调节音量（仅本地）
 const changeVolume = (val) => {
   volume.value = val;
   if (audioPlayer.value) {
@@ -261,6 +278,7 @@ const changeVolume = (val) => {
 
 const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://39.105.5.72');
 
+// 音乐同步事件（非房主接收）
 socket.on('musicSync', ({ action, data }) => {
   if (isCreator.value) return;
   const player = audioPlayer.value;
@@ -300,6 +318,9 @@ onMounted(async () => {
   try {
     const { data } = await api.get(`/rooms/${route.params.id}`);
     room.value = data;
+    // ✅ 等待 DOM 完成渲染后再初始化播放器
+    await nextTick();
+    initPlayer();
   } catch (err) {
     ElMessage.error('房间不存在或加载失败');
     return;
@@ -358,14 +379,13 @@ onMounted(async () => {
       ElMessage.error(msg);
     }
   });
-
-  initPlayer();
 });
 
 onUnmounted(() => {
   socket.disconnect();
 });
 
+// 下面三个功能函数保持不变
 const sendMessage = (text) => {
   if (!text.trim()) return;
   socket.emit('chatMessage', {
@@ -379,9 +399,7 @@ const kickUser = async (userIdToKick) => {
   try {
     await ElMessageBox.confirm('确定要踢出该用户吗？', '警告', { type: 'warning' });
     socket.emit('kickUser', { userIdToKick, roomId: route.params.id });
-  } catch (err) {
-    // 取消操作
-  }
+  } catch (err) {}
 };
 
 const deleteRoom = async () => {
