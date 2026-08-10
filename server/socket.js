@@ -56,6 +56,21 @@ module.exports = (io) => {
       }
     });
 
+    // 音乐控制事件（仅房主可操作）—— 修改为广播给房间内所有人，包括房主自己
+    socket.on('musicControl', async ({ roomId, action, data }) => {
+      const userInfo = onlineUsers.get(socket.id);
+      if (!userInfo) return;
+
+      // 验证房主身份
+      const room = await Room.findById(roomId);
+      if (!room || room.creator.toString() !== userInfo.userId) {
+        return socket.emit('error', { msg: '只有房主才能控制音乐' });
+      }
+
+      // 将控制指令广播给房间内所有成员（包括房主自己，多设备同步）
+      io.to(roomId).emit('musicSync', { action, data });
+    });
+    
     // 聊天消息
     socket.on('chatMessage', async ({ roomId, content, senderName }) => {
       const safeContent = content.trim().slice(0, 200);
