@@ -26,15 +26,14 @@
       <el-button type="danger" @click="deleteRoom">删除房间</el-button>
     </div>
 
-    <!-- ========== 音乐播放器面板 ========== -->
+    <!-- 音乐播放器 -->
     <div class="music-player">
       <div class="music-controls">
-        <!-- 歌曲选择（仅房主可用） -->
-        <el-select 
-          v-model="currentTrackIndex" 
-          :disabled="!isCreator" 
-          @change="changeTrack" 
-          size="small" 
+        <el-select
+          v-model="currentTrackIndex"
+          :disabled="!isCreator"
+          @change="changeTrack"
+          size="small"
           style="width: 200px; margin-right: 10px;"
         >
           <el-option
@@ -45,47 +44,36 @@
           />
         </el-select>
 
-        <!-- 播放/暂停按钮 -->
-        <el-button 
-          :icon="isPlaying ? 'VideoPause' : 'VideoPlay'" 
-          circle 
-          @click="togglePlay" 
-          :disabled="!isCreator" 
+        <el-button
+          :icon="isPlaying ? 'VideoPause' : 'VideoPlay'"
+          circle
+          @click="togglePlay"
+          :disabled="!isCreator"
         />
 
-        <!-- 进度条和时间 -->
         <div style="flex: 1; margin: 0 10px; display: flex; align-items: center;">
           <span style="font-size: 12px; width: 40px;">{{ formatTime(currentTime) }}</span>
-          <el-slider 
-            v-model="progressPercent" 
-            :disabled="!isCreator" 
-            @change="seekTo" 
+          <el-slider
+            v-model="progressPercent"
+            :disabled="!isCreator"
+            @change="seekTo"
             style="flex: 1; margin: 0 10px;"
             :format-tooltip="() => formatTime(currentTime)"
           />
           <span style="font-size: 12px; width: 40px;">{{ formatTime(duration) }}</span>
         </div>
 
-        <!-- 音量控制 -->
         <div style="display: flex; align-items: center; width: 140px;">
-          <el-button icon="Microphone" circle size="small" />
-          <el-slider 
-            v-model="volume" 
-            @input="changeVolume" 
-            style="flex:1; margin: 0 5px;" 
-            :max="100" 
-          />
-          <el-button icon="Microphone" circle size="small" />
+          <el-icon><VolumeDown /></el-icon>
+          <el-slider v-model="volume" @input="changeVolume" style="flex:1; margin: 0 5px;" :max="100" />
+          <el-icon><VolumeUp /></el-icon>
         </div>
       </div>
-      <!-- 隐藏的音频元素 -->
       <audio ref="audioPlayer" @timeupdate="onTimeUpdate" @loadedmetadata="onLoaded" @ended="onEnded" />
     </div>
-    <!-- =================================== -->
 
     <el-divider />
 
-    <!-- 在线用户列表 -->
     <div class="online-users">
       <h4>在线用户 ({{ onlineUsers.length }})</h4>
       <ul>
@@ -114,7 +102,6 @@
       </ul>
     </div>
 
-    <!-- 聊天区域 -->
     <div class="chat-box" ref="chatBox">
       <div v-for="(msg, idx) in messages" :key="idx" class="message">
         <span class="sender">{{ msg.senderName }}：</span>
@@ -124,7 +111,6 @@
       <el-empty v-if="messages.length === 0" description="暂无消息" />
     </div>
 
-    <!-- 预制消息按钮行 -->
     <div class="presets">
       <el-button
         v-for="preset in presets"
@@ -147,6 +133,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { io } from 'socket.io-client';
 import api from '../utils/api';
 import NavBar from '../components/NavBar.vue';
+import { VolumeDown, VolumeUp, VideoPlay, VideoPause } from '@element-plus/icons-vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -168,11 +155,11 @@ const presets = [
   '交换奇象生物，我有XXX想换YYY。'
 ];
 
-// ============= 音乐播放器状态 =============
+// 播放列表（歌曲名和路径）
 const playlist = ref([
-  { name: '净罪', src: '/music/song1.mp3' },
-  { name: '弧光', src: '/music/song2.mp3' },
-  { name: '涤墨', src: '/music/song3.mp3' }
+  { name: '净罪作战主题曲', src: '/music/song1.mp3' },
+  { name: '弧光作战主题曲', src: '/music/song2.mp3' },
+  { name: '涤墨作战 Swelling Ink', src: '/music/song3.mp3' }
 ]);
 const currentTrackIndex = ref(0);
 const isPlaying = ref(false);
@@ -181,7 +168,6 @@ const duration = ref(0);
 const volume = ref(50);
 const progressPercent = ref(0);
 
-// 播放器辅助函数
 const formatTime = (seconds) => {
   if (!seconds || isNaN(seconds)) return '0:00';
   const mins = Math.floor(seconds / 60);
@@ -205,7 +191,6 @@ const onLoaded = () => {
 
 const onEnded = () => {
   if (isCreator.value) {
-    // 房主自动下一首
     if (currentTrackIndex.value < playlist.value.length - 1) {
       currentTrackIndex.value++;
       changeTrack();
@@ -215,16 +200,26 @@ const onEnded = () => {
   }
 };
 
-const changeTrack = () => {
-  const track = playlist.value[currentTrackIndex.value];
-  if (audioPlayer.value) {
+// 初始化第一首歌（只加载，不播放）
+const initPlayer = () => {
+  const track = playlist.value[0];
+  if (audioPlayer.value && track) {
     audioPlayer.value.src = track.src;
     audioPlayer.value.load();
-    if (isPlaying.value) {
-      audioPlayer.value.play();
-    }
   }
-  // 只有房主发送控制指令
+};
+
+// 切换歌曲
+const changeTrack = () => {
+  const track = playlist.value[currentTrackIndex.value];
+  if (!audioPlayer.value) return;
+  // 先暂停，清除可能的中断错误
+  audioPlayer.value.pause();
+  audioPlayer.value.src = track.src;
+  audioPlayer.value.load();
+  if (isPlaying.value) {
+    audioPlayer.value.play().catch(() => {});
+  }
   if (isCreator.value) {
     socket.emit('musicControl', {
       roomId: route.params.id,
@@ -234,11 +229,12 @@ const changeTrack = () => {
   }
 };
 
+// 播放/暂停
 const togglePlay = () => {
   if (!isCreator.value) return;
   isPlaying.value = !isPlaying.value;
   if (isPlaying.value) {
-    audioPlayer.value?.play();
+    audioPlayer.value?.play().catch(() => {});
   } else {
     audioPlayer.value?.pause();
   }
@@ -249,6 +245,7 @@ const togglePlay = () => {
   });
 };
 
+// 拖动进度条
 const seekTo = (percent) => {
   if (!isCreator.value || !audioPlayer.value || !duration.value) return;
   const newTime = (percent / 100) * duration.value;
@@ -260,6 +257,7 @@ const seekTo = (percent) => {
   });
 };
 
+// 调节音量（仅本地，不同步）
 const changeVolume = (val) => {
   volume.value = val;
   if (audioPlayer.value) {
@@ -267,19 +265,18 @@ const changeVolume = (val) => {
   }
 };
 
-// ============= Socket 连接与事件 =============
 const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://39.105.5.72');
 
-// 监听音乐同步事件（非房主或房主其他设备接收）
+// 音乐同步事件（非房主接收）
 socket.on('musicSync', ({ action, data }) => {
-  if (isCreator.value) return; // 房主自己忽略同步指令
+  if (isCreator.value) return;
   const player = audioPlayer.value;
   if (!player) return;
 
   switch (action) {
     case 'play':
       player.currentTime = data.currentTime || 0;
-      player.play();
+      player.play().catch(() => {});
       isPlaying.value = true;
       break;
     case 'pause':
@@ -295,17 +292,17 @@ socket.on('musicSync', ({ action, data }) => {
       if (data.index !== undefined) {
         currentTrackIndex.value = data.index;
         const track = playlist.value[data.index];
+        player.pause();
         player.src = track.src;
         player.load();
         if (isPlaying.value) {
-          player.play();
+          player.play().catch(() => {});
         }
       }
       break;
   }
 });
 
-// 原有的房间内事件监听 (onlineUsers, userJoined, userLeft, updateOnline, newMessage, roomDeleted, kicked, error)
 onMounted(async () => {
   try {
     const { data } = await api.get(`/rooms/${route.params.id}`);
@@ -369,18 +366,14 @@ onMounted(async () => {
     }
   });
 
-  // 初始化音频播放器（设置初始音量，不自动播放）
-  if (audioPlayer.value) {
-    audioPlayer.value.volume = volume.value / 100;
-  }
+  // 初始化第一首歌
+  initPlayer();
 });
 
 onUnmounted(() => {
-  // 离开页面时断开 socket，避免内存泄漏
   socket.disconnect();
 });
 
-// ============= 其他功能函数 =============
 const sendMessage = (text) => {
   if (!text.trim()) return;
   socket.emit('chatMessage', {
@@ -429,7 +422,6 @@ const copyCode = () => {
   margin: 20px auto;
   padding: 20px;
 }
-/* 音乐播放器样式 */
 .music-player {
   margin: 20px 0;
   padding: 10px;
