@@ -73,4 +73,23 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// 删除房间（仅创建者或管理员）
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const room = await Room.findById(req.params.id);
+    if (!room) return res.status(404).json({ msg: '房间不存在' });
+
+    // 检查权限：创建者 或 管理员
+    if (room.creator.toString() !== req.user.userId && !req.user.isAdmin) {
+      return res.status(403).json({ msg: '无权删除此房间' });
+    }
+
+    await Room.findByIdAndDelete(req.params.id);
+    res.json({ msg: '房间已删除' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: '服务器错误' });
+  }
+});
+
 module.exports = router;

@@ -15,15 +15,20 @@
       </el-descriptions-item>
     </el-descriptions>
 
+    <!-- 房主专属操作 -->
+    <div v-if="isCreator" style="margin: 20px 0;">
+      <el-button type="danger" @click="deleteRoom">删除房间</el-button>
+    </div>
+
     <el-divider />
-    
+
     <!-- 在线用户列表 -->
     <div class="online-users">
-      <h4>在线用户</h4>
+      <h4>在线用户 ({{ onlineUsers.length }})</h4>
       <ul>
         <li v-for="u in onlineUsers" :key="u.userId">
-          <span :style="{ fontWeight: u.userId === creatorId ? 'bold' : 'normal' }">
-            {{ u.username }} {{ u.userId === creatorId ? '(房主)' : '' }}
+          <span :style="{ fontWeight: u.userId === room.creator?._id ? 'bold' : 'normal' }">
+            {{ u.username }} {{ u.userId === room.creator?._id ? '(房主)' : '' }}
           </span>
           <el-button 
             v-if="isCreator && u.userId !== currentUserId" 
@@ -61,26 +66,24 @@
         {{ preset }}
       </el-button>
     </div>
-
-    <!-- 移除自定义输入框 -->
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, nextTick, computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { io } from 'socket.io-client';
 import api from '../utils/api';
 import NavBar from '../components/NavBar.vue';
 
 const route = useRoute();
+const router = useRouter();
 const room = ref(null);
 const onlineCount = ref(0);
 const messages = ref([]);
 const chatBox = ref(null);
 const onlineUsers = ref([]);
-const creatorId = ref(null);
 
 const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 const currentUserId = computed(() => currentUser.id);
@@ -100,7 +103,6 @@ onMounted(async () => {
   try {
     const { data } = await api.get(`/rooms/${route.params.id}`);
     room.value = data;
-    creatorId.value = data.creator?._id;
   } catch (err) {
     ElMessage.error('房间不存在或加载失败');
     return;
@@ -113,9 +115,8 @@ onMounted(async () => {
     username: currentUser.username || '游客'
   });
 
-  socket.on('onlineUsers', ({ users, creator }) => {
+  socket.on('onlineUsers', ({ users }) => {
     onlineUsers.value = users;
-    creatorId.value = creator;
   });
 
   socket.on('userJoined', ({ userId, username }) => {
@@ -142,8 +143,8 @@ onMounted(async () => {
   socket.on('kicked', ({ msg }) => {
     ElMessage.error(msg);
     setTimeout(() => {
-      window.location.href = '/lobby';
-    }, 2000);
+      router.push('/lobby');
+    }, 1500);
   });
 
   socket.on('error', ({ msg }) => {
@@ -166,6 +167,23 @@ const kickUser = async (userIdToKick) => {
     socket.emit('kickUser', { userIdToKick, roomId: route.params.id });
   } catch (err) {
     // 取消操作
+  }
+};
+
+const deleteRoom = async () => {
+  try {
+    await ElMessageBox.confirm('确定要删除此房间吗？此操作不可恢复！', '警告', {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'error'
+    });
+    await api.delete(`/rooms/${room.value._id}`);
+    ElMessage.success('房间已删除');
+    router.push('/lobby');
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error(err.response?.data?.msg || '删除失败');
+    }
   }
 };
 
@@ -192,5 +210,6 @@ const copyCode = () => {
 .time { font-size: 12px; color: #999; margin-left: 8px; }
 .presets { margin-bottom: 12px; }
 .presets .el-button { margin-right: 8px; margin-bottom: 6px; }
-.online-users { margin-top: 20px; }
+.online-users ul { list-style: none; padding: 0; }
+.online-users li { margin: 5px 0; }
 </style>
