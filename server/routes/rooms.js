@@ -85,6 +85,16 @@ router.delete('/:id', auth, async (req, res) => {
     }
 
     await Room.findByIdAndDelete(req.params.id);
+
+    // 通过 Socket.IO 通知房间内所有用户，并强制他们退出房间
+    const io = req.app.get('io');
+    if (io) {
+      io.to(req.params.id).emit('roomDeleted', { roomId: req.params.id });
+      // 让所有已连接的 socket 离开该房间
+      const sockets = await io.in(req.params.id).fetchSockets();
+      sockets.forEach(socket => socket.leave(req.params.id));
+    }
+
     res.json({ msg: '房间已删除' });
   } catch (err) {
     console.error(err);

@@ -140,6 +140,11 @@ onMounted(async () => {
     });
   });
 
+  socket.on('roomDeleted', ({ roomId }) => {
+    ElMessage.error('房间已被房主删除');
+    router.push('/lobby');
+  });
+
   socket.on('kicked', ({ msg }) => {
     ElMessage.error(msg);
     setTimeout(() => {

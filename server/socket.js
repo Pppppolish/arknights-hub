@@ -1,4 +1,5 @@
 const Room = require('./models/Room');
+const bannedUsers = new Map(); // key: userId, value: roomId
 
 module.exports = (io) => {
   // 存储 socket.id -> { userId, username, roomId }
@@ -8,6 +9,11 @@ module.exports = (io) => {
     console.log(`⚡ 新连接: ${socket.id}`);
 
     // 加入房间
+        // 检查是否被该房间禁止加入
+    if (bannedUsers.has(userId) && bannedUsers.get(userId) === roomId) {
+      socket.emit('error', { msg: '你已被该房间禁止加入' });
+      return;
+    }
     socket.on('joinRoom', async ({ roomId, userId, username }) => {
       try {
         socket.join(roomId);
@@ -83,6 +89,8 @@ module.exports = (io) => {
       if (kickedSocket) {
         kickedSocket.leave(roomId);
         kickedSocket.emit('kicked', { msg: '你被房主移出了房间' });
+        // 将用户加入黑名单
+        bannedUsers.set(userIdToKick, roomId);
         kickedSocket.disconnect(true);
       }
       // 从映射中移除
