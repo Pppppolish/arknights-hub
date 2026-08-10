@@ -164,7 +164,9 @@ const presets = [
 const playlist = ref([
   { name: '净罪作战主题曲', src: '/music/song1.mp3' },
   { name: '弧光作战主题曲', src: '/music/song2.mp3' },
-  { name: '涤墨作战 Swelling Ink', src: '/music/song3.mp3' }
+  { name: '涤墨作战 Swelling Ink', src: '/music/song3.mp3' },
+  { name: '音律联觉-熠曲丰碑', src: '/music/song4.mp3' },
+  { name: '音律联觉-昔时我见', src: '/music/song5.mp3' }
 ]);
 const currentTrackIndex = ref(0);
 const isPlaying = ref(false);

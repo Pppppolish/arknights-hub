@@ -1,2 +1,4 @@
 node_modules 
 .env 
+"public/music/*.mp3" 
+"client/public/music/*.mp3" 
