@@ -3,11 +3,8 @@
     <el-card class="login-card">
       <h2>{{ isLogin ? '登录' : '注册' }}</h2>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="0">
-        <el-form-item prop="username" v-if="!isLogin">
-          <el-input v-model="form.username" placeholder="用户名" />
-        </el-form-item>
-        <el-form-item prop="email">
-          <el-input v-model="form.email" placeholder="邮箱" />
+        <el-form-item prop="username">
+          <el-input v-model="form.username" placeholder="昵称" />
         </el-form-item>
         <el-form-item prop="password">
           <el-input v-model="form.password" type="password" placeholder="密码" show-password />
@@ -20,7 +17,7 @@
       </el-form>
       <p class="switch-text">
         {{ isLogin ? '还没有账号？' : '已有账号？' }}
-        <el-button type="text" @click="isLogin = !isLogin">
+        <el-button type="text" @click="toggleMode">
           {{ isLogin ? '去注册' : '去登录' }}
         </el-button>
       </p>
@@ -41,20 +38,24 @@ const formRef = ref(null);
 
 const form = reactive({
   username: '',
-  email: '',
   password: ''
 });
 
 const rules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
+  username: [
+    { required: true, message: '请输入昵称', trigger: 'blur' },
+    { max: 7, message: '昵称最多7个字符', trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, message: '密码长度至少6位', trigger: 'blur' }
   ]
+};
+
+const toggleMode = () => {
+  isLogin.value = !isLogin.value;
+  form.username = '';
+  form.password = '';
 };
 
 const submitForm = async () => {
@@ -64,12 +65,8 @@ const submitForm = async () => {
     loading.value = true;
     try {
       const url = isLogin.value ? '/auth/login' : '/auth/register';
-      const payload = isLogin.value
-        ? { email: form.email, password: form.password }
-        : { username: form.username, email: form.email, password: form.password };
-      
+      const payload = { username: form.username, password: form.password };
       const { data } = await api.post(url, payload);
-      // 保存 token 和用户信息
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       ElMessage.success(isLogin.value ? '登录成功' : '注册成功');

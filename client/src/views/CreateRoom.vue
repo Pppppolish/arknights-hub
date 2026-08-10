@@ -28,6 +28,7 @@ import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import api from '../utils/api';
+import NavBar from '../components/NavBar.vue';
 
 const router = useRouter();
 const formRef = ref(null);
