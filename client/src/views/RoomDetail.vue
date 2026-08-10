@@ -147,15 +147,21 @@ onMounted(async () => {
 
   socket.on('kicked', ({ msg }) => {
     ElMessage.error(msg);
+    socket.disconnect(); // 立即断开，防止继续通信
     setTimeout(() => {
-      router.push('/lobby');
-    }, 1500);
+      window.location.href = '/lobby'; // 用硬跳转确保组件销毁
+    }, 500);
   });
 
   socket.on('error', ({ msg }) => {
-    ElMessage.error(msg);
+    if (msg.includes('禁止加入')) {
+      ElMessage.error(msg);
+      socket.disconnect();
+      window.location.href = '/lobby';
+    } else {
+      ElMessage.error(msg);
+    }
   });
-});
 
 const sendMessage = (text) => {
   if (!text.trim()) return;
