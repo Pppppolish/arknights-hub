@@ -72,6 +72,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import api from '../utils/api';
 import NavBar from '../components/NavBar.vue';
+import { getItem, setItem, removeItem } from '../utils/storage';
 
 const user = ref(null);
 const activeTab = ref('show');
@@ -156,10 +157,10 @@ const changeUsername = async () => {
     const { data } = await api.put('/auth/username', { username: editForm.username });
     user.value.username = data.user.username;
     ElMessage.success('昵称修改成功');
-    // 同步更新 localStorage 中的用户名
-    const localUser = JSON.parse(localStorage.getItem('user') || '{}');
+    // 同步更新 storage 中的用户名
+    const localUser = JSON.parse(getItem('user') || '{}');
     localUser.username = data.user.username;
-    localStorage.setItem('user', JSON.stringify(localUser));
+    setItem('user', JSON.stringify(localUser));
   } catch (err) {
     ElMessage.error(err.response?.data?.msg || '修改昵称失败');
   }
@@ -175,8 +176,8 @@ const changePassword = async () => {
       await api.put('/auth/password', passwordForm);
       ElMessage.success('密码修改成功，请重新登录');
       // 清除 token，强制重新登录
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      removeItem('token');
+      removeItem('user');
       window.location.href = '/login';
     } catch (err) {
       ElMessage.error(err.response?.data?.msg || '修改失败');

@@ -160,6 +160,7 @@ import { io } from 'socket.io-client';
 import api from '../utils/api';
 import NavBar from '../components/NavBar.vue';
 import { ArrowDown, ArrowUp, VideoPlay, VideoPause } from '@element-plus/icons-vue';
+import { getItem } from '../utils/storage';  // 新增引入
 
 const route = useRoute();
 const router = useRouter();
@@ -170,8 +171,8 @@ const chatBox = ref(null);
 const onlineUsers = ref([]);
 const audioPlayer = ref(null);
 const selectedMsg = ref(''); // 当前选中的预制消息
-
-const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+// 修改：使用 getItem 读取 user
+const currentUser = JSON.parse(getItem('user') || '{}');
 const currentUserId = computed(() => currentUser.id);
 const isCreator = computed(() => room.value?.creator?._id === currentUserId.value);
 

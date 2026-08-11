@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getItem } from './storage';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL, // 后端地址
@@ -7,7 +8,7 @@ const api = axios.create({
 
 // 请求拦截器：自动添加 Authorization 头
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token');
+  const token = getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

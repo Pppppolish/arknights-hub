@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { getItem } from '../utils/storage';
 
 const routes = [
   { path: '/', redirect: '/login' },
@@ -27,7 +28,7 @@ const router = createRouter({
 // 全局导航守卫：拦截非管理员访问 /admin
 router.beforeEach((to, from, next) => {
   if (to.meta.requiresAdmin) {
-    const token = localStorage.getItem('token');
+    const token = getItem('token');
     if (!token) {
       ElMessage.error('请先登录');
       return next('/login');

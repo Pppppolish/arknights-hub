@@ -10,6 +10,9 @@
           <el-input v-model="form.password" type="password" placeholder="密码" show-password />
         </el-form-item>
         <el-form-item>
+          <el-checkbox v-model="form.remember">保持登录状态（下次打开浏览器无需重新登录）</el-checkbox>
+        </el-form-item>
+        <el-form-item>
           <el-button type="primary" @click="submitForm" :loading="loading" style="width:100%">
             {{ isLogin ? '登录' : '注册' }}
           </el-button>
@@ -30,6 +33,7 @@ import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import api from '../utils/api';
+import { setItem, setRememberMe } from '../utils/storage';
 
 const router = useRouter();
 const isLogin = ref(true);
@@ -38,7 +42,8 @@ const formRef = ref(null);
 
 const form = reactive({
   username: '',
-  password: ''
+  password: '',
+  remember: false   // 新增“记住我”字段
 });
 
 const rules = {
@@ -67,8 +72,10 @@ const submitForm = async () => {
       const url = isLogin.value ? '/auth/login' : '/auth/register';
       const payload = { username: form.username, password: form.password };
       const { data } = await api.post(url, payload);
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      // 根据“记住我”选项决定存储引擎，并保存登录凭证
+      setRememberMe(form.remember);
+      setItem('token', data.token);
+      setItem('user', JSON.stringify(data.user));
       ElMessage.success(isLogin.value ? '登录成功' : '注册成功');
       router.push('/lobby');
     } catch (err) {

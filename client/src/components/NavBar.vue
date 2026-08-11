@@ -15,6 +15,8 @@
     <el-menu-item index="/profile">个人中心</el-menu-item>
     <!-- 管理员入口，仅当用户 token 中包含 isAdmin: true 时显示 -->
     <el-menu-item v-if="isAdmin" index="/admin">管理后台</el-menu-item>
+    <!-- 退出登录 -->
+    <el-menu-item @click="logout">退出登录</el-menu-item>
   </el-menu>
 </template>
 
@@ -23,6 +25,7 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '../utils/api';
 import { ElMessage } from 'element-plus';
+import { getItem, removeItem } from '../utils/storage';
 
 const route = useRoute();
 const router = useRouter();
@@ -30,7 +33,7 @@ const activePath = computed(() => route.path);
 
 // 通过解析 JWT 判断当前用户是否为管理员
 const isAdmin = computed(() => {
-  const token = localStorage.getItem('token');
+  const token = getItem('token');
   if (!token) return false;
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
@@ -56,6 +59,14 @@ const goMyRoom = async () => {
       ElMessage.error('获取房间失败');
     }
   }
+};
+
+// 退出登录
+const logout = () => {
+  removeItem('token');
+  removeItem('user');
+  ElMessage.success('已安全退出');
+  router.push('/login');
 };
 </script>
 
