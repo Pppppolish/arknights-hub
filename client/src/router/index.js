@@ -1,14 +1,30 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { ElMessage } from 'element-plus'; // 新增
+import { ElMessage } from 'element-plus';
 
 const routes = [
-  // ... 你原有的所有路由 ...
-  { path: '/admin', name: 'AdminPanel', component: () => import('../views/AdminPanel.vue'), meta: { requiresAdmin: true } }
+  { path: '/', redirect: '/login' },
+  { path: '/login', name: 'Login', component: () => import('../views/Login.vue') },
+  { path: '/profile', name: 'Profile', component: () => import('../views/Profile.vue') },
+  { path: '/lobby', name: 'Lobby', component: () => import('../views/Lobby.vue') },
+  { path: '/room/:id', name: 'RoomDetail', component: () => import('../views/RoomDetail.vue') },
+  { path: '/new-post', name: 'NewPost', component: () => import('../views/NewPost.vue') },
+  { path: '/user/:id', name: 'UserPublic', component: () => import('../views/UserPublic.vue') },
+  { path: '/create-room', name: 'CreateRoom', component: () => import('../views/CreateRoom.vue') },
+  // 管理员后台路由
+  {
+    path: '/admin',
+    name: 'AdminPanel',
+    component: () => import('../views/AdminPanel.vue'),
+    meta: { requiresAdmin: true }
+  }
 ];
 
-const router = createRouter({...});
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+});
 
-// 添加导航守卫
+// 全局导航守卫：拦截非管理员访问 /admin
 router.beforeEach((to, from, next) => {
   if (to.meta.requiresAdmin) {
     const token = localStorage.getItem('token');
